@@ -29,7 +29,16 @@ async function run() {
    /*  await client.connect(); */
 
 
+    
+   const classCollection = client.db("fluentMindDb").collection("classes");
 
+
+   app.post('/class', async(req, res)=>{
+       const classes = req.body;
+       console.log(classes)
+       const result = await classCollection.insertOne(classes)
+       res.send(result);
+     })
 
 
 
