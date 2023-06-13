@@ -33,6 +33,12 @@ async function run() {
    const classCollection = client.db("fluentMindDb").collection("classes");
 
 
+   app.get('/classes', async (req, res) => {
+    const result = await classCollection.find().toArray();
+    res.send(result);
+  })
+
+
    app.post('/class', async(req, res)=>{
        const classes = req.body;
        console.log(classes)
