@@ -31,6 +31,7 @@ async function run() {
 
     
    const classCollection = client.db("fluentMindDb").collection("classes");
+   const userCollection = client.db("fluentMindDb").collection("users");
 
 
    app.get('/classes', async (req, res) => {
@@ -46,12 +47,18 @@ async function run() {
   })
 
 
-   app.post('/class', async(req, res)=>{
-       const classes = req.body;
-       console.log(classes)
-       const result = await classCollection.insertOne(classes)
-       res.send(result);
-     })
+  app.post('/class', async(req, res)=>{
+    const classes = req.body;
+    console.log(classes)
+    const result = await classCollection.insertOne(classes)
+    res.send(result);
+  })
+
+  app.post('/addUser', async(req, res)=>{
+      const user = req.body;
+      const result = await userCollection.insertOne(user)
+      res.send(result);
+    })
 
 
 
