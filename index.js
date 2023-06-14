@@ -92,6 +92,23 @@ async function run() {
 
     });
 
+    app.put('/classes/:id', async(req, res)=>{
+      const id = req.params.id;
+      const filter = {_id: new ObjectId(id)};
+      const options = {upsert: true};
+      const updatedClass = req.body;
+      const toy = {
+        $set:{
+          className: updatedClass.className, 
+          classImage: updatedClass.classImage, 
+          price : updatedClass.price,
+          seats: updatedClass.seats,  
+        }
+      }
+      const result = await classCollection.updateOne(filter, toy, options)
+      res.send(result)
+    })
+
     app.delete('/classes/:id', async(req, res) =>{
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
