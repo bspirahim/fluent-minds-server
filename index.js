@@ -55,11 +55,18 @@ async function run() {
     const bookingCollection = client.db("fluentMindDb").collection("bookings");
     
 
+    // user 
+    app.get("/users", verifyJWT, async (req, res) => {
+      let query = {};
+      const result = await userCollection.find(query).toArray();
+      res.send(result);
+    });
 
     app.get('/classes', async (req, res) => {
       const result = await classCollection.find().toArray();
       res.send(result);
     })
+
 
     app.get('/bookings', async (req, res) => {
       const result = await bookingCollection.find().toArray();
@@ -81,6 +88,7 @@ async function run() {
       res.send(result);
     })
 
+    /* bookings api for select btn */
     app.post('/bookings', async (req, res) => {
       const bookings = req.body;
       console.log(bookings)
@@ -128,6 +136,25 @@ async function run() {
       res.send(result)
     })
 
+    // update makeinstructor
+    app.put("/makeinstructor/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const updateInstructor = req.body;
+      const instructor = {
+        $set: {
+          role: updateInstructor.role
+        },
+      };
+      const result = await userCollection.updateOne(
+        filter,
+        instructor,
+        options
+      );
+      res.send(result);
+    });
+
     /* class delete api */
     app.delete('/classes/:id', async(req, res) =>{
       const id = req.params.id;
@@ -135,6 +162,22 @@ async function run() {
       const result = await classCollection.deleteOne(query);
       res.send(result)
     })
+
+    /* bookings delete api */
+    app.delete('/bookings/:id', async(req, res) =>{
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await bookingCollection.deleteOne(query);
+      res.send(result)
+    })
+
+    // delete for user
+    app.delete("/users/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await userCollection.deleteOne(query);
+      res.send(result);
+    });
 
 
 
