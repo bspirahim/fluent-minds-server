@@ -29,16 +29,16 @@ function verifyJWT(req, res, next) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
-      return res.status(401).send({ message: 'unauthorized access' });
+    return res.status(401).send({ message: 'unauthorized access' });
   }
   const token = authHeader.split(' ')[1];
 
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
-      if (err) {
-          return res.status(403).send({ message: 'Forbidden access' });
-      }
-      req.decoded = decoded;
-      next();
+    if (err) {
+      return res.status(403).send({ message: 'Forbidden access' });
+    }
+    req.decoded = decoded;
+    next();
   })
 }
 
@@ -53,7 +53,7 @@ async function run() {
     const classCollection = client.db("fluentMindDb").collection("classes");
     const userCollection = client.db("fluentMindDb").collection("users");
     const bookingCollection = client.db("fluentMindDb").collection("bookings");
-    
+
 
     // user 
     app.get("/users", verifyJWT, async (req, res) => {
@@ -63,27 +63,51 @@ async function run() {
     });
 
     app.get('/classes', async (req, res) => {
-      const result = await classCollection.find().toArray();
+      let query = {}
+      if (req.query?.email) {
+        query = {
+          email: req.query.email,
+        }
+      }
+      const result = await classCollection.find(query).toArray();
       res.send(result);
     })
 
 
     app.get('/bookings', async (req, res) => {
-      const result = await bookingCollection.find().toArray();
+      let query = {}, result = {}
+      if (req.query?.email) {
+        query = {
+          userEmail: req.query.email,
+        }
+        result = await bookingCollection.find(query).toArray();
+      }
       res.send(result);
     })
 
     app.get('/classes/:id', async (req, res) => {
       const id = req.params.id;
-      const query = { _id: new ObjectId(id) }
-      const result = await classCollection.findOne(query)
+      let query, isBooked = false;
+      if (req.query?.email) {
+        query = {
+          userEmail: req.query.email
+        }
+        const bookings = await bookingCollection.findOne(query)
+        if (bookings?._id) {
+          isBooked = true
+        }
+      }
+      query = { _id: new ObjectId(id) }
+      let result = await classCollection.findOne(query)
+      if (result?._id) {
+        result.isBooked = isBooked
+      }
       res.send(result)
     })
 
 
     app.post('/class', async (req, res) => {
       const classes = req.body;
-      console.log(classes)
       const result = await classCollection.insertOne(classes)
       res.send(result);
     })
@@ -91,16 +115,20 @@ async function run() {
     /* bookings api for select btn */
     app.post('/bookings', async (req, res) => {
       const bookings = req.body;
-      console.log(bookings)
+      const filter = { _id: new ObjectId(bookings.classID) };
+
       const result = await bookingCollection.insertOne(bookings)
+
+      if (result.insertedId) {
+        let status = await classCollection.updateOne(filter, { $inc: { enrolled: 1 } });
+      }
       res.send(result);
     })
 
-    
+
 
     app.post('/jwtANDusers', async (req, res) => {
       const u = req.body;
-
       const query = { email: u.email };
       let user = await userCollection.findOne(query);
       if (!user && u?.insert) {
@@ -119,17 +147,17 @@ async function run() {
 
 
     /* class update api */
-    app.put('/classes/:id', async(req, res)=>{
+    app.put('/classes/:id', async (req, res) => {
       const id = req.params.id;
-      const filter = {_id: new ObjectId(id)};
-      const options = {upsert: true};
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
       const updatedClass = req.body;
       const toy = {
-        $set:{
-          className: updatedClass.className, 
-          classImage: updatedClass.classImage, 
-          price : updatedClass.price,
-          seats: updatedClass.seats,  
+        $set: {
+          className: updatedClass.className,
+          classImage: updatedClass.classImage,
+          price: updatedClass.price,
+          seats: updatedClass.seats,
         }
       }
       const result = await classCollection.updateOne(filter, toy, options)
@@ -156,7 +184,7 @@ async function run() {
     });
 
     /* class delete api */
-    app.delete('/classes/:id', async(req, res) =>{
+    app.delete('/classes/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await classCollection.deleteOne(query);
@@ -164,7 +192,7 @@ async function run() {
     })
 
     /* bookings delete api */
-    app.delete('/bookings/:id', async(req, res) =>{
+    app.delete('/bookings/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await bookingCollection.deleteOne(query);
