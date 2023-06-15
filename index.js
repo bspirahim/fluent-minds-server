@@ -52,12 +52,16 @@ async function run() {
 
     const classCollection = client.db("fluentMindDb").collection("classes");
     const userCollection = client.db("fluentMindDb").collection("users");
+    const bookingCollection = client.db("fluentMindDb").collection("bookings");
+    
 
 
     app.get('/classes', async (req, res) => {
       const result = await classCollection.find().toArray();
       res.send(result);
     })
+
+
 
     app.get('/classes/:id', async (req, res) => {
       const id = req.params.id;
@@ -73,6 +77,15 @@ async function run() {
       const result = await classCollection.insertOne(classes)
       res.send(result);
     })
+
+    app.post('/bookings', async (req, res) => {
+      const bookings = req.body;
+      console.log(bookings)
+      const result = await bookingCollection.insertOne(bookings)
+      res.send(result);
+    })
+
+    
 
     app.post('/jwtANDusers', async (req, res) => {
       const u = req.body;
