@@ -56,32 +56,51 @@ async function run() {
 
 
     // user 
-    app.get("/users", verifyJWT, async (req, res) => {
+    app.get("/users", async (req, res) => {
       let query = {};
-      const result = await userCollection.find(query).toArray();
+      const limit = parseInt(req.query?.limit);
+      if (req.query?.getInstructor) {
+        query = {
+          role: 'instructor'
+        }
+      }
+      const cursor = userCollection.find(query);
+      if (limit > 0) {
+        cursor.limit(limit);
+      }
+      const result = await cursor.toArray();
       res.send(result);
     });
 
     app.get('/classes', async (req, res) => {
       let query = {}
+      const limit = parseInt(req.query?.limit);
       if (req.query?.email) {
         query = {
-          email: req.query.email,
+          instractorEmail: req.query.email,
         }
       }
-      const result = await classCollection.find(query).toArray();
+      const cursor = classCollection.find(query);
+      if (limit > 0) {
+        cursor.limit(limit);
+      }
+      const result = await cursor.toArray();
       res.send(result);
     })
 
-
     app.get('/bookings', async (req, res) => {
-      let query = {}, result = {}
-      if (req.query?.email) {
+      let query = {}, queryEmail = {}, result = {}
+      if (req.query?.getPaid) {
         query = {
+          paid: 'Paid'
+        }
+      }
+      if (req.query?.email) {
+        queryEmail = {
           userEmail: req.query.email,
         }
-        result = await bookingCollection.find(query).toArray();
       }
+      result = await bookingCollection.find({ ...query, ...queryEmail }).toArray();
       res.send(result);
     })
 
@@ -90,7 +109,7 @@ async function run() {
       let query, isBooked = false;
       if (req.query?.email) {
         query = {
-          userEmail: req.query.email
+          userEmail: req.query.email, classID: id
         }
         const bookings = await bookingCollection.findOne(query)
         if (bookings?._id) {
@@ -123,6 +142,40 @@ async function run() {
         let status = await classCollection.updateOne(filter, { $inc: { enrolled: 1 } });
       }
       res.send(result);
+    })
+
+    //payment
+    app.post('/create-payment-intent', async (req, res) => {
+      const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+      const o = req.body;
+      const price = parseFloat(o.price);
+      const amount = Math.round(price * 100);
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        currency: 'usd',
+        amount: amount,
+        "payment_method_types": [
+          "card"
+        ]
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    app.post('/payments', async (req, res) => {
+      const payment = req.body;
+      const id = payment.orderId
+      const filter = { _id: new ObjectId(id) }
+      const updatedDoc = {
+        $set: {
+          paid: 'Paid',
+          transactionId: payment.transactionId
+        }
+      }
+      const updatedResult = await bookingCollection.updateOne(filter, updatedDoc)
+
+      res.send(updatedResult);
     })
 
 
@@ -182,6 +235,13 @@ async function run() {
       );
       res.send(result);
     });
+
+    app.get('/bookings/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await bookingCollection.findOne(query);
+      res.send(result)
+    })
 
     /* class delete api */
     app.delete('/classes/:id', async (req, res) => {
